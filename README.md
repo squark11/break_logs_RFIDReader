@@ -13,6 +13,9 @@ This project is a web-based application that registers and monitors employee bre
 #**Technology Stack**
 
 **Frontend:** 🖥️ Flask with Jinja2 templates for rendering dynamic web pages.
+
 **Backend: **🐍 Python with Flask, communicating with an RFID reader and SQL Server.
+
 **Database:** 🗄️ Microsoft SQL Server (using ODBC Driver 17 for SQL Server) to store employee data and break logs.
+
 **CSS:** 🎨 Custom styles stored in templates/styles for the frontend design.
