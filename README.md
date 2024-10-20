@@ -11,6 +11,7 @@ Features
 • L**og Filtering:** Logs can be filtered by employee name, and break start/end times are displayed in a clean, structured format.
 
 **Technology Stack**
+
 **Frontend:** 🖥️ Flask with Jinja2 templates for rendering dynamic web pages.
 **Backend: **🐍 Python with Flask, communicating with an RFID reader and SQL Server.
 **Database:** 🗄️ Microsoft SQL Server (using ODBC Driver 17 for SQL Server) to store employee data and break logs.
