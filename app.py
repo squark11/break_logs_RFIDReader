@@ -67,52 +67,49 @@ def login():
 
     return render_template('login.html')
 
-def read_rfid_from_serial(port='COM4', baud_rate=9600, timeout=1):
-    try:
-        with serial.Serial(port, baud_rate, timeout=timeout) as ser:
-            raw_data = ser.readline()
-            if raw_data:
-                try:
-                    rfid_code = raw_data.decode('cp1252').strip()
-                    return rfid_code
-                except UnicodeDecodeError:
-                    print(f"UnicodeDecodeError: {raw_data}")
-                    return raw_data.hex()
-    except serial.SerialException as e:
-        print(f"Error reading from serial port: {e}")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-    return None
-
-def rfid_monitor():
+def handle_rfid_data(ser):
     while True:
         try:
-            rfid_code = read_rfid_from_serial()
-            if rfid_code:
-                print(f"RFID Code Read: {rfid_code}")  # Display only new RFID codes
-                break_number = determine_break_number(rfid_code)
-                action = 'Przerwa ' + str((break_number + 1) // 2) + (' - start' if break_number % 2 == 1 else ' - koniec')
-                log_action(rfid_code, action, break_number)
-                time.sleep(0.1)  # Add a small delay for stability
+            if ser.in_waiting > 0:  # Sprawdzaj tylko, gdy są dane w buforze
+                raw_data = ser.readline()
+                try:
+                    rfid_code = raw_data.decode('cp1252').strip()
+                    if rfid_code:
+                        print(f"RFID Code Read: {rfid_code}")
+                        break_number = determine_break_number(rfid_code)
+                        action = 'Przerwa ' + str((break_number + 1) // 2) + (' - start' if break_number % 2 == 1 else ' - koniec')
+                        log_action(rfid_code, action, break_number)
+                except UnicodeDecodeError:
+                    print(f"UnicodeDecodeError: {raw_data}")
+        except serial.SerialException as e:
+            print(f"Error reading from serial port: {e}")
         except Exception as e:
-            print(f"Error in RFID monitor: {e}")
+            print(f"Unexpected error: {e}")
+        time.sleep(0.1)  # Krótsze uśpienie dla płynności
+
+def rfid_monitor_event_driven():
+    ser = serial.Serial('COM4', 9600, timeout=1)
+    try:
+        handle_rfid_data(ser)
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        ser.close()
 
 def determine_break_number(rfid_code):
-    # Get the highest break number for this RFID code from the database for today
     conn = connect_to_db()
     cursor = conn.cursor()
 
-    # Pobierz dzisiejszą datę
     today = datetime.now().date()
 
     cursor.execute("""SELECT MAX(BreakNumber) FROM Logs 
                       WHERE UserID = ? AND CAST(Timestamp AS DATE) = ?""",
                    (get_user_id_by_rfid(rfid_code), today))
 
-    max_break_number = cursor.fetchone()[0] or 0  # Get the max break number or 0 if none exists
+    max_break_number = cursor.fetchone()[0] or 0
     conn.close()
 
-    return max_break_number + 1  # Increment to get the next break number
+    return max_break_number + 1
 
 @app.route('/logout')
 @login_required
@@ -125,7 +122,7 @@ def logout():
 def change_password():
     if request.method == 'POST':
         new_password = request.form['password']
-        flash('Password changed successfully!')  # Placeholder
+        flash('Password changed successfully!')
         return redirect(url_for('dashboard'))
 
     return render_template('change_password.html')
@@ -166,7 +163,6 @@ def view_logs():
     conn = connect_to_db()
     cursor = conn.cursor()
 
-    # Domyślna data to bieżący dzień
     date_filter = datetime.now().date()
     user_filter = None
 
@@ -204,7 +200,6 @@ def view_logs():
     logs = cursor.fetchall()
     conn.close()
 
-    # Pobierz użytkowników do dropdowna
     conn = connect_to_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM Users")
@@ -213,16 +208,6 @@ def view_logs():
 
     return render_template('view_logs.html', logs=logs, users=users, date_filter=date_filter)
 
-
-@app.route('/delete_break', methods=['POST'])
-def delete_break():
-    log_id = request.form['log_id']
-    # Zapytanie do bazy danych, aby usunąć przerwę
-    cursor = db.cursor()
-    cursor.execute("DELETE FROM breaks WHERE id = ?", (log_id,))
-    db.commit()
-    cursor.close()
-    return redirect(url_for('view_logs'))  # Przekierowanie z powrotem do widoku logów
 
 @app.route('/user_list')
 @login_required
@@ -240,7 +225,6 @@ def log_action(rfid_code, action, break_number):
     if user_id:
         timestamp = datetime.now()
 
-        # Sprawdzanie ostatniego odczytu dla tego kodu RFID
         if rfid_code in last_read_time:
             time_since_last_read = (timestamp - last_read_time[rfid_code]).total_seconds()
 
@@ -252,13 +236,11 @@ def log_action(rfid_code, action, break_number):
             conn = connect_to_db()
             cursor = conn.cursor()
 
-            # Dodaj wpis do bazy danych
             cursor.execute("INSERT INTO Logs (UserID, Action, BreakNumber, Timestamp) VALUES (?, ?, ?, ?)",
                            (user_id, action, break_number, timestamp))
             conn.commit()
             conn.close()
 
-            # Aktualizuj ostatni czas odczytu
             last_read_time[rfid_code] = timestamp
 
             print(f"Dodano wpis: {user_id}, {action}, Break Number: {break_number}, Timestamp: {timestamp}")
@@ -275,6 +257,5 @@ def get_user_id_by_rfid(rfid_code):
     return user_id[0] if user_id else None
 
 if __name__ == '__main__':
-    # Start RFID monitoring in a separate thread
-    threading.Thread(target=rfid_monitor, daemon=True).start()
+    threading.Thread(target=rfid_monitor_event_driven, daemon=True).start()
     app.run(debug=True)
