@@ -1,9 +1,9 @@
+
+
 # RFID Employee Break Tracking System
+
 ## Features
 This project is a web-based application that registers and monitors employee break times using RFID technology. It is built with Python and Flask, and connects to a Microsoft SQL Server database for logging and managing break data. The application is designed to streamline employee management by allowing employees to log their break start and end times via RFID card scans.
-
-
-
 
 • **Employee Management:** Add, update, and view employee details, including their RFID codes.
 
@@ -15,8 +15,7 @@ This project is a web-based application that registers and monitors employee bre
 
 • **Admin Interface:** The admin panel allows authorized users to manage employees and view detailed logs of break times.
 
-• L**og Filtering:** Logs can be filtered by employee name, and break start/end times are displayed in a clean, structured format.
-
+• **Log Filtering:** Logs can be filtered by employee name, and break start/end times are displayed in a clean, structured format.
 
 ##Technology Stack
 
