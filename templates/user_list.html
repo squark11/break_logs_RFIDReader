@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Lista Użytkowników{% endblock %}
+
+{% block content %}
+<h2>Lista Użytkowników</h2>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nazwa Użytkownika</th>
+            <th>Kod RFID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+            <tr>
+                <td>{{ user.UserID }}</td>
+                <td>{{ user.Username }}</td>
+                <td>{{ user.RFIDCode }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

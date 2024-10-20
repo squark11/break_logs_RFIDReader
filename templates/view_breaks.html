@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View Breaks</title>
+</head>
+<body>
+    <h2>Breaks</h2>
+    <table border="1">
+        <tr>
+            <th>Employee</th>
+            <th>Break 1 Start</th>
+            <th>Break 1 End</th>
+            <th>Break 2 Start</th>
+            <th>Break 2 End</th>
+            <th>Break 3 Start</th>
+            <th>Break 3 End</th>
+        </tr>
+        {% for break in breaks %}
+        <tr>
+            <td>{{ break[0] }}</td>
+            <td>{{ break[1] }}</td>
+            <td>{{ break[2] }}</td>
+            <td>{{ break[3] }}</td>
+            <td>{{ break[4] }}</td>
+            <td>{{ break[5] }}</td>
+            <td>{{ break[6] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

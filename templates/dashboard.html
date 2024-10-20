@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h2>Witaj, Admin</h2>
+<a href="{{ url_for('add_user') }}">Dodaj Nowego Użytkownika</a><br>
+<a href="{{ url_for('view_logs') }}">Zobacz Logi</a><br>
+<a href="{{ url_for('change_password') }}">Zmień Hasło</a><br>
+<a href="{{ url_for('user_list') }}">Lista Użytkowników</a><br>
+<a href="{{ url_for('logout') }}">Wyloguj</a>
+{% endblock %}
