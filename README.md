@@ -17,7 +17,7 @@ This project is a web-based application that registers and monitors employee bre
 
 • **Log Filtering:** Logs can be filtered by employee name, and break start/end times are displayed in a clean, structured format.
 
-##Technology Stack
+## Technology Stack
 
 
 **Frontend:** 🖥️ Flask with Jinja2 templates for rendering dynamic web pages.
