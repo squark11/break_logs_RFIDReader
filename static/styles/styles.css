@@ -6,6 +6,54 @@ body {
     padding: 0;
 }
 
+.container {
+    max-width: 1100px;
+    padding: 20px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center; /* Wyśrodkowanie treści */
+}
+
+h1, h2 {
+    color: #333;
+    margin-top: 0;
+}
+
+.dashboard-links {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dashboard-button {
+    display: block;
+    padding: 15px 30px;
+    margin: 10px 0;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    text-align: center;
+    transition: background 0.3s ease;
+    width: 80%; /* Szerokość przycisków */
+}
+
+.dashboard-button:hover {
+    background-color: #45a049;
+}
+
+.logout {
+    background-color: #f44336; /* Kolor przycisku wylogowania */
+}
+
+.logout:hover {
+    background-color: #e53935; /* Ciemniejszy kolor przycisku wylogowania na hover */
+}
+
 nav {
     background-color: #4CAF50;
     color: #fff;

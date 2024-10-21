@@ -1,0 +1,6 @@
+flask
+flask-login
+pyodbc
+datetime
+pyserial
+Flask-WeasyPrint
