@@ -11,3 +11,5 @@ WshShell.Run "pip install -r requirements.txt", 0, True
 
 ' Uruchom aplikację
 WshShell.Run "C:\break_logs_RFIDReader\app.py", 0
+
+'test
