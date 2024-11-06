@@ -142,7 +142,7 @@ def determine_break_number(rfid_code):
 def read_rfid_from_serial():
     with serial_lock:  # Use lock to prevent access conflicts
         try:
-            ser = serial.Serial('COM9', 9600, timeout=1)
+            ser = serial.Serial('COM8', 9600, timeout=1)
             while True:
                 if ser.in_waiting > 0:  # Check if data is available in the buffer
                     raw_data = ser.readline()
@@ -155,14 +155,14 @@ def read_rfid_from_serial():
                         print(f"UnicodeDecodeError: {raw_data}")
                 time.sleep(0.1)  # Shorter sleep for responsiveness
         except serial.SerialException:
-            flash("Port COM9 nie jest dostępny, kontynuowanie aplikacji bez odczytu RFID.")
-            return None  # Return None if there is an issue with COM9
+            flash("Port COM8 nie jest dostępny, kontynuowanie aplikacji bez odczytu RFID.")
+            return None  # Return None if there is an issue with COM8
         except Exception as e:
             print(f"Error reading from serial port: {e}")
             return None  # Return None in case of other errors
 
 def rfid_monitor_event_driven():
-    ser = serial.Serial('COM8', 9600, timeout=1)
+    ser = serial.Serial('COM7', 9600, timeout=1)
     try:
         while True:
             handle_rfid_data(ser)
