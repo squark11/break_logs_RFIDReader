@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <title>{% block title %}Strona{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
-    <script>
-        function showRFIDPrompt() {
-            alert("Proszę zeskanować kartę RFID teraz.");
-        }
-    </script>
 </head>
 <body>
     <nav>
@@ -21,8 +16,32 @@
         </ul>
     </nav>
 
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash-list">
+                    {% for message in messages %}
+                        <li class="flash-message">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+    </div>
+
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+    <script>
+    setTimeout(function() {
+        var flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(function(message) {
+            message.style.opacity = '0';
+            setTimeout(function() {
+                message.remove();
+            }, 500);  // Usuwanie po 0.5 sekundy
+        });
+    }, 3000);  // Czas wyświetlania komunikatów: 3 sekundy
+</script>
+</script>
 </body>
 </html>
