@@ -14,8 +14,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 # Hard-coded admin credentials
-ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = 'admin'
+ADMIN_USERNAME = 'root'
+ADMIN_PASSWORD = 'pass2'
 
 # Placeholder for last read time and breaks
 last_read_time = {}
