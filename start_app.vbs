@@ -10,4 +10,4 @@ WshShell.Run "git pull", 0, True
 WshShell.Run "pip install -r requirements.txt", 0, True
 
 ' Uruchom aplikację
-WshShell.Run "app.py", 0
+WshShell.Run "C:\break_logs_RFIDReader\app.py", 0
