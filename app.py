@@ -224,6 +224,7 @@ def add_user():
 
     return render_template('add_user.html')
 
+
 @app.route('/view_logs', methods=['GET', 'POST'])
 @login_required
 def view_logs():
@@ -252,7 +253,7 @@ def view_logs():
                MAX(CASE WHEN l.BreakNumber = 6 THEN l.Timestamp END) AS Break3_End
         FROM Logs l
         JOIN Users u ON l.UserID = u.UserID
-        WHERE DATE(l.Timestamp) = ?  -- Filter by the selected date
+        WHERE DATE(l.Timestamp) = ?
     """
 
     params = [date_filter]
@@ -261,29 +262,32 @@ def view_logs():
         query += " AND l.UserID = ?"
         params.append(user_filter)
 
-    query += " GROUP BY u.Username ORDER BY u.Username"
+    query += " GROUP BY u.Username ORDER BY Break1_Start"  # Sort by first break start time
 
     cursor.execute(query, params)
     logs = cursor.fetchall()
     conn.close()
 
-    # Convert timestamps from string to datetime objects
+    # Convert timestamps and calculate break durations in hh:mm:ss format
     for i in range(len(logs)):
-        logs[i] = list(logs[i])  # Convert Row to list for mutability
-        for j in range(1, len(logs[i])):  # Start from index 1, since index 0 is username
+        logs[i] = list(logs[i])
+        for j in range(1, 7):  # Timestamps: indexes 1-6
             if logs[i][j] is not None:
-                logs[i][j] = datetime.fromisoformat(logs[i][j])  # Convert to datetime
+                logs[i][j] = datetime.fromisoformat(logs[i][j])
 
-    # Print the logs to the console
-    for log in logs:
-        print(f"Username: {log[0]}")
-        print(f"Break 1 Start: {log[1]}")
-        print(f"Break 1 End: {log[2]}")
-        print(f"Break 2 Start: {log[3]}")
-        print(f"Break 2 End: {log[4]}")
-        print(f"Break 3 Start: {log[5]}")
-        print(f"Break 3 End: {log[6]}")
-        print("-" * 20)  # Separator for readability
+        # Calculate durations in hh:mm:ss format
+        for j in range(1, 4):  # For Break1, Break2, and Break3
+            start_idx = 2 * j - 1  # Start timestamp index
+            end_idx = 2 * j  # End timestamp index
+
+            if logs[i][start_idx] and logs[i][end_idx]:
+                duration_seconds = (logs[i][end_idx] - logs[i][start_idx]).total_seconds()
+                hours = int(duration_seconds // 3600)
+                minutes = int((duration_seconds % 3600) // 60)
+                seconds = int(duration_seconds % 60)
+                logs[i].append(f"{hours:02}:{minutes:02}:{seconds:02}")
+            else:
+                logs[i].append('Brak')
 
     conn = connect_to_db()
     cursor = conn.cursor()
@@ -292,11 +296,6 @@ def view_logs():
     conn.close()
 
     return render_template('view_logs.html', logs=logs, users=users, date_filter=date_filter)
-
-
-
-
-
 
 
 @app.route('/user_list')
