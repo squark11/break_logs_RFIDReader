@@ -262,7 +262,7 @@ def view_logs():
         query += " AND l.UserID = ?"
         params.append(user_filter)
 
-    query += " GROUP BY u.Username ORDER BY Break1_Start"  # Sort by first break start time
+    query += " GROUP BY u.Username ORDER BY COALESCE(Break1_Start, Break2_Start, Break3_Start) ASC"
 
     cursor.execute(query, params)
     logs = cursor.fetchall()
