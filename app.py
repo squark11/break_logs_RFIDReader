@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin
 from datetime import datetime
 import sqlite3
@@ -296,6 +296,41 @@ def view_logs():
     conn.close()
 
     return render_template('view_logs.html', logs=logs, users=users, date_filter=date_filter)
+
+@app.route('/delete_log', methods=['POST'])
+@login_required
+def delete_log():
+    data = request.get_json()
+    username = data.get('username')
+    break_number = data.get('break_number')
+
+    if not username or not break_number:
+        return jsonify({'error': 'Brak wymaganych danych (Username lub BreakNumber).'}), 400
+
+    conn = connect_to_db()
+    cursor = conn.cursor()
+
+    # Znajdź UserID na podstawie Username
+    cursor.execute("SELECT UserID FROM Users WHERE Username = ?", (username,))
+    user = cursor.fetchone()
+
+    if not user:
+        conn.close()
+        return jsonify({'error': 'Nie znaleziono użytkownika.'}), 404
+
+    user_id = user[0]
+
+    # Usuń log na podstawie UserID i BreakNumber
+    cursor.execute("DELETE FROM Logs WHERE UserID = ? AND BreakNumber = ?", (user_id, break_number))
+    if cursor.rowcount == 0:
+        conn.close()
+        return jsonify({'error': 'Nie znaleziono logu do usunięcia.'}), 404
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({'message': 'Log został usunięty.'}), 200
+
 
 
 @app.route('/user_list')
