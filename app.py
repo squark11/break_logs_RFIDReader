@@ -99,7 +99,7 @@ def handle_rfid_data(ser):
             if ser.in_waiting > 0:
                 raw_data = ser.readline()
                 try:
-                    rfid_code = raw_data.decode('cp1252').strip()
+                    rfid_code = raw_data.decode('cp1252', errors='ignore').strip()
                     if rfid_code:
                         print(f"RFID Code Read: {rfid_code}")
                         break_number = determine_break_number(rfid_code)
@@ -147,7 +147,7 @@ def read_rfid_from_serial():
                 if ser.in_waiting > 0:  # Check if data is available in the buffer
                     raw_data = ser.readline()
                     try:
-                        rfid_code = raw_data.decode('cp1252').strip()
+                        rfid_code = raw_data.decode('cp1252', errors='ignore').strip()
                         if rfid_code:
                             print(f"RFID Code Read: {rfid_code}")
                             return rfid_code  # Return the read RFID code
