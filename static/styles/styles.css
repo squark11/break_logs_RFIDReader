@@ -196,3 +196,9 @@ table tr:nth-child(even) {
 table tr:hover {
     background-color: #ddd;
 }
+table button{
+    display:none;
+}
+table td:hover button{
+    display:block;
+}
