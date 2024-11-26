@@ -31,22 +31,88 @@
         <th>Kolacja - Start</th>
         <th>Kolacja - Koniec</th>
         <th>Kolacja - Czas (min)</th>
+        <th>Akcje</th>
     </tr>
     {% for log in logs %}
     <tr>
         <td>{{ log[0] }}</td>
-        <td>{{ log[1].strftime('%H:%M:%S') if log[1] else 'Brak' }}</td>
-        <td>{{ log[2].strftime('%H:%M:%S') if log[2] else 'Brak' }}</td>
+        <td>
+            {{ log[1].strftime('%H:%M:%S') if log[1] else 'Brak' }}
+            {% if log[1] %}
+            <button class="delete-log" data-username="{{ log[0] }}" data-break-number="1">Usuń</button>
+            {% endif %}
+        </td>
+        <td>
+            {{ log[2].strftime('%H:%M:%S') if log[2] else 'Brak' }}
+            {% if log[2] %}
+            <button class="delete-log" data-username="{{ log[0] }}" data-break-number="2">Usuń</button>
+            {% endif %}
+        </td>
         <td>{{ log[7] if log[7] else 'Brak' }}</td>
-        <td>{{ log[3].strftime('%H:%M:%S') if log[3] else 'Brak' }}</td>
-        <td>{{ log[4].strftime('%H:%M:%S') if log[4] else 'Brak' }}</td>
+        <td>
+            {{ log[3].strftime('%H:%M:%S') if log[3] else 'Brak' }}
+            {% if log[3] %}
+            <button class="delete-log" data-username="{{ log[0] }}" data-break-number="3">Usuń</button>
+            {% endif %}
+        </td>
+        <td>
+            {{ log[4].strftime('%H:%M:%S') if log[4] else 'Brak' }}
+            {% if log[4] %}
+            <button class="delete-log" data-username="{{ log[0] }}" data-break-number="4">Usuń</button>
+            {% endif %}
+        </td>
         <td>{{ log[8] if log[8] else 'Brak' }}</td>
-        <td>{{ log[5].strftime('%H:%M:%S') if log[5] else 'Brak' }}</td>
-        <td>{{ log[6].strftime('%H:%M:%S') if log[6] else 'Brak' }}</td>
+        <td>
+            {{ log[5].strftime('%H:%M:%S') if log[5] else 'Brak' }}
+            {% if log[5] %}
+            <button class="delete-log" data-username="{{ log[0] }}" data-break-number="5">Usuń</button>
+            {% endif %}
+        </td>
+        <td>
+            {{ log[6].strftime('%H:%M:%S') if log[6] else 'Brak' }}
+            {% if log[6] %}
+            <button class="delete-log" data-username="{{ log[0] }}" data-break-number="6">Usuń</button>
+            {% endif %}
+        </td>
         <td>{{ log[9] if log[9] else 'Brak' }}</td>
     </tr>
     {% endfor %}
 </table>
+
+
+<script>
+document.querySelectorAll('.delete-log').forEach(button => {
+    button.addEventListener('click', function () {
+        const username = this.getAttribute('data-username');
+        const breakNumber = this.getAttribute('data-break-number');
+
+        if (confirm(`Czy na pewno chcesz usunąć wpis dla użytkownika ${username}, przerwa ${breakNumber}?`)) {
+            fetch('/delete_log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, break_number: breakNumber })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    location.reload(); // Odśwież tabelę po usunięciu
+                } else if (data.error) {
+                    alert(`Błąd: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                alert('Wystąpił błąd podczas usuwania logu.');
+                console.error(error);
+            });
+        }
+    });
+});
+
+</script>
+
 
 
 {% endblock %}
