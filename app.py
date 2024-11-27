@@ -5,16 +5,12 @@ import sqlite3
 import time
 import serial
 import threading
-import logging
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret_key'
 
-logging.basicConfig(
-    filename="logs.txt",
-    level=logging.ERROR,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
+
 
 # Login manager setup
 login_manager = LoginManager(app)
@@ -127,7 +123,6 @@ def handle_rfid_data(ser):
                         log_action(rfid_code, action, break_number)
                 except UnicodeDecodeError:
                     print(f"UnicodeDecodeError: {raw_data}")
-                    logging.error(error_message)
         time.sleep(0.1)
 
 
@@ -174,15 +169,12 @@ def read_rfid_from_serial():
                             return rfid_code  # Return the read RFID code
                     except UnicodeDecodeError:
                         print(f"UnicodeDecodeError: {raw_data}")
-                        logging.error(error_message)
                 time.sleep(0.1)  # Shorter sleep for responsiveness
         except serial.SerialException:
             flash("Port COM7 nie jest dostępny, kontynuowanie aplikacji bez odczytu RFID.")
-            logging.error(error_message)
             return None  # Return None if there is an issue with COM8
         except Exception as e:
             print(f"Error reading from serial port: {e}")
-            logging.error(error_message)
             return None  # Return None in case of other errors
 
 def rfid_monitor_event_driven():
@@ -191,7 +183,6 @@ def rfid_monitor_event_driven():
         while True:
             handle_rfid_data(ser)
     except Exception as e:
-        logging.error(error_message)
         print(f"Error: {e}")
     finally:
         ser.close()
@@ -239,7 +230,6 @@ def add_user():
                     conn.commit()
                     flash(f'Użytkownik {username} został dodany pomyślnie!', 'success')
                 except Exception as e:
-                    logging.error(error_message)
                     flash(f'Wystąpił błąd: {e}', 'error')
                     print(f'Error: {e}')
             conn.close()
@@ -381,7 +371,6 @@ def remove_rfid(user_id):
         conn.close()
         flash('Karta RFID została usunięta dla użytkownika.')
     except Exception as e:
-        logging.error(error_message)
         flash(f'Wystąpił błąd podczas usuwania karty: {e}')
 
     return redirect(url_for('user_list'))
