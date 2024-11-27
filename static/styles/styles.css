@@ -196,9 +196,9 @@ table tr:nth-child(even) {
 table tr:hover {
     background-color: #ddd;
 }
-table button{
+table button.delete-log{
     display:none;
 }
-table td:hover button{
+table td:hover button.delete-log{
     display:block;
 }
