@@ -11,17 +11,21 @@ Sub KillProcess(processName)
 End Sub
 
 ' Zamknij poprzednie uruchomienia app.py
-KillProcess "python.exe" ' Upewnij się, że to proces uruchamiający app.py
+KillProcess "python.exe"
+
+' Ścieżka do katalogu projektu
+projectPath = "C:\break_logs_RFIDReader"
 
 ' Sprawdź status repozytorium
+WshShell.CurrentDirectory = projectPath
 WshShell.Run "git status", 0, True
 
 ' Pobierz aktualizacje
 WshShell.Run "git fetch --all", 0, True
 WshShell.Run "git reset --hard origin/main", 0, True
 
-' Zainstaluj wymagane pakiety
-WshShell.Run "pip install -r requirements.txt", 0, True
+' Zainstaluj wymagane pakiety w środowisku wirtualnym (jeśli jest używane)
+WshShell.Run "cmd /c python -m pip install -r requirements.txt", 0, True
 
-' Uruchom aplikację
-WshShell.Run "python C:\break_logs_RFIDReader\app.py", 0
+' Uruchom aplikację (upewnij się, że używasz pełnej ścieżki do Pythona, jeśli to konieczne)
+WshShell.Run "cmd /c python " & projectPath & "\app.py", 0
