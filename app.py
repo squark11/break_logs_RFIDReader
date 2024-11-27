@@ -6,11 +6,8 @@ import time
 import serial
 import threading
 
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret_key'
-
-
 
 # Login manager setup
 login_manager = LoginManager(app)
@@ -96,28 +93,15 @@ def login():
 
     return render_template('login.html')
 
-last_read_time = {}  # Słownik w formacie: {rfid_code: last_read_timestamp}
-
 def handle_rfid_data(ser):
     while True:
-        with serial_lock:  # Użyj blokady podczas czytania z portu
+        with serial_lock:  # Use lock for reading from the port
             if ser.in_waiting > 0:
                 raw_data = ser.readline()
                 try:
                     rfid_code = raw_data.decode('cp1252', errors='ignore').strip()
                     if rfid_code:
                         print(f"RFID Code Read: {rfid_code}")
-
-                        current_time = time.time()
-                        if rfid_code in last_read_time:
-                            time_since_last_read = current_time - last_read_time[rfid_code]
-                            if time_since_last_read < 180:
-                                print(f"Zignorowano powtórne odczytanie karty: {rfid_code} (czas od ostatniego odczytu: {time_since_last_read:.2f}s)")
-                                continue
-
-                        # Zaktualizuj czas ostatniego odczytu dla tego kodu RFID
-                        last_read_time[rfid_code] = current_time
-
                         break_number = determine_break_number(rfid_code)
                         action = 'Przerwa ' + str((break_number + 1) // 2) + (' - start' if break_number % 2 == 1 else ' - koniec')
                         log_action(rfid_code, action, break_number)
@@ -319,35 +303,25 @@ def delete_log():
     data = request.get_json()
     username = data.get('username')
     break_number = data.get('break_number')
-
     if not username or not break_number:
         return jsonify({'error': 'Brak wymaganych danych (Username lub BreakNumber).'}), 400
-
     conn = connect_to_db()
     cursor = conn.cursor()
-
     # Znajdź UserID na podstawie Username
     cursor.execute("SELECT UserID FROM Users WHERE Username = ?", (username,))
     user = cursor.fetchone()
-
     if not user:
         conn.close()
         return jsonify({'error': 'Nie znaleziono użytkownika.'}), 404
-
     user_id = user[0]
-
     # Usuń log na podstawie UserID i BreakNumber
     cursor.execute("DELETE FROM Logs WHERE UserID = ? AND BreakNumber = ?", (user_id, break_number))
     if cursor.rowcount == 0:
         conn.close()
         return jsonify({'error': 'Nie znaleziono logu do usunięcia.'}), 404
-
     conn.commit()
     conn.close()
-
     return jsonify({'message': 'Log został usunięty.'}), 200
-
-
 
 @app.route('/user_list')
 @login_required
