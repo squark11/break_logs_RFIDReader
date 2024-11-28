@@ -96,31 +96,15 @@ def login():
 
     return render_template('login.html')
 
-last_read_time = {}  # Słownik w formacie: {rfid_code: last_read_timestamp}
-
-
 def handle_rfid_data(ser):
     while True:
-        with serial_lock:  # Użycie locka do odczytu z portu
+        with serial_lock:  # Use lock for reading from the port
             if ser.in_waiting > 0:
                 raw_data = ser.readline()
                 try:
                     rfid_code = raw_data.decode('cp1252', errors='ignore').strip()
                     if rfid_code:
                         print(f"RFID Code Read: {rfid_code}")
-                        
-                        # Sprawdzenie czasu ostatniego odczytu
-                        now = datetime.now()
-                        if rfid_code in last_read_times:
-                            elapsed_time = (now - last_read_times[rfid_code]).total_seconds()
-                            if elapsed_time < 180:  # Jeśli odczyt w ciągu ostatnich 3 minut
-                                print(f"Odczyt karty {rfid_code} zignorowany (za wcześnie).")
-                                continue
-                        
-                        # Aktualizacja czasu ostatniego odczytu
-                        last_read_times[rfid_code] = now
-                        
-                        # Określenie akcji i zapis logu
                         break_number = determine_break_number(rfid_code)
                         action = 'Przerwa ' + str((break_number + 1) // 2) + (' - start' if break_number % 2 == 1 else ' - koniec')
                         log_action(rfid_code, action, break_number)
@@ -378,6 +362,66 @@ def remove_rfid(user_id):
 
     return redirect(url_for('user_list'))
 
+@app.route('/add_break', methods=['GET', 'POST'])
+@login_required
+def add_break():
+    conn = connect_to_db()
+    cursor = conn.cursor()
+
+    # Pobierz wszystkich użytkowników do wyboru w formularzu
+    cursor.execute("SELECT UserID, Username FROM Users")
+    users = cursor.fetchall()
+
+    if request.method == 'POST':
+        user_id = request.form['user']
+        break_number = int(request.form['break_number'])
+        start_time = request.form['start_time']
+        end_time = request.form['end_time']
+
+        # Walidacja: Upewnijmy się, że start_time < end_time
+        if start_time >= end_time:
+            flash('Czas rozpoczęcia musi być przed czasem zakończenia przerwy.', 'error')
+            return redirect(url_for('add_break'))
+
+        try:
+            # Numeracja przerw: Przerwa 1 (1 i 2), Przerwa 2 (3 i 4), Przerwa 3 (5 i 6)
+            if break_number == 1:
+                break_start = 1
+                break_end = 2
+            elif break_number == 2:
+                break_start = 3
+                break_end = 4
+            elif break_number == 3:
+                break_start = 5
+                break_end = 6
+            else:
+                flash('Niepoprawny numer przerwy.', 'error')
+                return redirect(url_for('add_break'))
+
+            timestamp = datetime.now().strftime('%Y-%m-%d')  # Aktualna data
+
+            # Zapisywanie danych do bazy dla rozpoczęcia i zakończenia przerwy
+            cursor.execute("""
+                INSERT INTO Logs (UserID, BreakNumber, Action, Timestamp)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, break_start, 'Przerwa ' + str(break_number) + ' - start', f"{timestamp}T{start_time}:00"))
+            cursor.execute("""
+                INSERT INTO Logs (UserID, BreakNumber, Action, Timestamp)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, break_end, 'Przerwa ' + str(break_number) + ' - koniec', f"{timestamp}T{end_time}:00"))
+
+            conn.commit()
+            flash('Przerwa została dodana pomyślnie!', 'success')
+
+        except Exception as e:
+            flash(f'Wystąpił błąd: {e}', 'error')
+
+        finally:
+            conn.close()
+            return redirect(url_for('view_logs'))
+
+    return render_template('add_break.html', users=users)
+
 
 def log_action(rfid_code, action, break_number):
     user_id = get_user_id_by_rfid(rfid_code)
@@ -388,7 +432,7 @@ def log_action(rfid_code, action, break_number):
         if rfid_code in last_read_time:
             time_since_last_read = (datetime.now() - datetime.fromisoformat(last_read_time[rfid_code])).total_seconds()
 
-            if time_since_last_read < 15:
+            if time_since_last_read < 180:
                 print("Odbicie zbyt szybko, spróbuj ponownie później.")
                 return
 
