@@ -101,26 +101,13 @@ last_read_time = {}  # Słownik w formacie: {rfid_code: last_read_timestamp}
 
 def handle_rfid_data(ser):
     while True:
-        with serial_lock:  # Użycie locka do odczytu z portu
+        with serial_lock:  # Use lock for reading from the port
             if ser.in_waiting > 0:
                 raw_data = ser.readline()
                 try:
                     rfid_code = raw_data.decode('cp1252', errors='ignore').strip()
                     if rfid_code:
                         print(f"RFID Code Read: {rfid_code}")
-                        
-                        # Sprawdzenie czasu ostatniego odczytu
-                        now = datetime.now()
-                        if rfid_code in last_read_times:
-                            elapsed_time = (now - last_read_times[rfid_code]).total_seconds()
-                            if elapsed_time < 180:  # Jeśli odczyt w ciągu ostatnich 3 minut
-                                print(f"Odczyt karty {rfid_code} zignorowany (za wcześnie).")
-                                continue
-                        
-                        # Aktualizacja czasu ostatniego odczytu
-                        last_read_times[rfid_code] = now
-                        
-                        # Określenie akcji i zapis logu
                         break_number = determine_break_number(rfid_code)
                         action = 'Przerwa ' + str((break_number + 1) // 2) + (' - start' if break_number % 2 == 1 else ' - koniec')
                         log_action(rfid_code, action, break_number)
