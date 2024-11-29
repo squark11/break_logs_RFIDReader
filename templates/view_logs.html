@@ -110,6 +110,33 @@ document.querySelectorAll('.delete-log').forEach(button => {
     });
 });
 
+document.addEventListener('DOMContentLoaded', function() {
+    // Przeszukujemy komórki w kolumnach odpowiadających log7, log8 i log9
+    const columnsToCheck = [1,2,3,4,5, 6,7,8, 9];
+
+    columnsToCheck.forEach(colIndex => {
+        document.querySelectorAll(`table td:nth-child(${colIndex + 1})`).forEach(cell => {
+            const timeText = cell.textContent.trim();
+
+            // Sprawdzamy, czy komórka zawiera czas w formacie HH:MM:SS
+            const timeMatch = timeText.match(/^(\d{2}):(\d{2}):(\d{2})$/);
+
+            if (timeMatch) {
+                const hours = parseInt(timeMatch[1], 10);
+                const minutes = parseInt(timeMatch[2], 10);
+                const seconds = parseInt(timeMatch[3], 10);
+
+                // Sprawdzamy, czy czas wynosi dokładnie 30 minut (00:30:00)
+                if (hours >= 1 || minutes >= 30) {
+    // Zaznacz komórkę na czerwono, jeśli czas wynosi dokładnie lub więcej 30 minut
+    cell.classList.add('highlight-red');
+}
+            }
+        });
+    });
+});
+
+
 </script>
 
 

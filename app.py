@@ -1,10 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin
-from datetime import datetime
+from datetime import datetime, timedelta
+from threading import Timer
+
 import sqlite3
 import time
 import serial
 import threading
+import pytz
 
 
 app = Flask(__name__)
@@ -96,6 +99,7 @@ def login():
 
     return render_template('login.html')
 
+
 def handle_rfid_data(ser):
     while True:
         with serial_lock:  # Use lock for reading from the port
@@ -104,9 +108,12 @@ def handle_rfid_data(ser):
                 try:
                     rfid_code = raw_data.decode('cp1252', errors='ignore').strip()
                     if rfid_code:
+                        close_open_breaks()
                         print(f"RFID Code Read: {rfid_code}")
                         break_number = determine_break_number(rfid_code)
                         action = 'Przerwa ' + str((break_number + 1) // 2) + (' - start' if break_number % 2 == 1 else ' - koniec')
+
+                        # Zarejestruj akcję
                         log_action(rfid_code, action, break_number)
                 except UnicodeDecodeError:
                     print(f"UnicodeDecodeError: {raw_data}")
@@ -174,6 +181,43 @@ def rfid_monitor_event_driven():
     finally:
         ser.close()
 
+def close_open_breaks():
+    try:
+        conn = connect_to_db()
+        cursor = conn.cursor()
+
+        # Pobierz wszystkie otwarte przerwy (BreakNumber nieparzysty, brak odpowiadającej przerwy końcowej)
+        cursor.execute("""
+            SELECT l1.UserID, l1.BreakNumber, l1.Timestamp
+            FROM Logs l1
+            LEFT JOIN Logs l2
+            ON l1.UserID = l2.UserID AND l1.BreakNumber = l2.BreakNumber - 1
+            WHERE l1.BreakNumber % 2 = 1 AND (l2.BreakNumber IS NULL OR l2.BreakNumber = '')
+        """)
+        open_breaks = cursor.fetchall()
+
+        for user_id, break_number, start_time in open_breaks:
+            start_time_dt = datetime.fromisoformat(start_time)
+            now = datetime.now()
+
+            time_diff = (now - start_time_dt).total_seconds() / 60  # różnica w minutach
+
+            if time_diff > 30:
+                # Zamknij przerwę po 30 minutach
+                end_break_number = break_number + 1
+                end_time = start_time_dt + timedelta(minutes=30)
+                cursor.execute("""
+                    INSERT INTO Logs (UserID, Action, BreakNumber, Timestamp) 
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, f'Przerwa {(break_number + 1) // 2} - koniec', end_break_number, end_time))
+                print(f"Automatycznie zamknięto przerwę {break_number // 2} dla użytkownika ID {user_id}.")
+
+        conn.commit()
+    except Exception as e:
+        print(f'Wystąpił błąd podczas zamykania otwartych przerw: {e}')
+    finally:
+        conn.close()
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -231,6 +275,8 @@ def add_user():
 @app.route('/view_logs', methods=['GET', 'POST'])
 @login_required
 def view_logs():
+    close_open_breaks()
+
     conn = connect_to_db()
     cursor = conn.cursor()
 
@@ -362,6 +408,7 @@ def remove_rfid(user_id):
 
     return redirect(url_for('user_list'))
 
+
 @app.route('/add_break', methods=['GET', 'POST'])
 @login_required
 def add_break():
@@ -376,12 +423,7 @@ def add_break():
         user_id = request.form['user']
         break_number = int(request.form['break_number'])
         start_time = request.form['start_time']
-        end_time = request.form['end_time']
-
-        # Walidacja: Upewnijmy się, że start_time < end_time
-        if start_time >= end_time:
-            flash('Czas rozpoczęcia musi być przed czasem zakończenia przerwy.', 'error')
-            return redirect(url_for('add_break'))
+        end_time = request.form.get('end_time', '').strip()  # Obsługa pustej wartości
 
         try:
             # Numeracja przerw: Przerwa 1 (1 i 2), Przerwa 2 (3 i 4), Przerwa 3 (5 i 6)
@@ -400,15 +442,18 @@ def add_break():
 
             timestamp = datetime.now().strftime('%Y-%m-%d')  # Aktualna data
 
-            # Zapisywanie danych do bazy dla rozpoczęcia i zakończenia przerwy
+            # Zapisywanie danych do bazy dla rozpoczęcia przerwy
             cursor.execute("""
                 INSERT INTO Logs (UserID, BreakNumber, Action, Timestamp)
                 VALUES (?, ?, ?, ?)
             """, (user_id, break_start, 'Przerwa ' + str(break_number) + ' - start', f"{timestamp}T{start_time}:00"))
-            cursor.execute("""
-                INSERT INTO Logs (UserID, BreakNumber, Action, Timestamp)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, break_end, 'Przerwa ' + str(break_number) + ' - koniec', f"{timestamp}T{end_time}:00"))
+
+            # Zapisywanie danych do bazy dla zakończenia przerwy tylko jeśli `end_time` jest podane
+            if end_time:
+                cursor.execute("""
+                    INSERT INTO Logs (UserID, BreakNumber, Action, Timestamp)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, break_end, 'Przerwa ' + str(break_number) + ' - koniec', f"{timestamp}T{end_time}:00"))
 
             conn.commit()
             flash('Przerwa została dodana pomyślnie!', 'success')
@@ -450,6 +495,8 @@ def log_action(rfid_code, action, break_number):
             print(f'Wystąpił błąd podczas rejestrowania akcji: {e}')
     else:
         print(f'Nie znaleziono użytkownika z RFID: {rfid_code}')
+
+
 
 def get_user_id_by_rfid(rfid_code):
     conn = connect_to_db()

@@ -143,9 +143,7 @@ form {
     align-items: center;
     margin: 20px 0;
     background-color: #fff;
-    padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 form label {
@@ -198,8 +196,9 @@ a {
     text-align: center;
 }
 
-a:hover {
-    color: #45a049;
+.highlight-red {
+    background-color: red;
+    color: white;
 }
 
 table {
