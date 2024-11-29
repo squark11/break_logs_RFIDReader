@@ -138,7 +138,8 @@ def determine_break_number(rfid_code):
                                                                                                          "%H:%M").time():
         break_number = 5
     else:
-        break_number = 0  # Brak przerwy, jeśli jest poza godzinami przerw
+        conn.close()
+        return 0  # Brak przerwy, jeśli jest poza godzinami przerw
 
     # Pobranie ostatniego numeru przerwy
     cursor.execute("SELECT MAX(BreakNumber) FROM Logs WHERE UserID = ? AND DATE(Timestamp) = ?",
@@ -147,6 +148,7 @@ def determine_break_number(rfid_code):
     max_break_number = cursor.fetchone()[0] or 0
     conn.close()
 
+    # Sprawdzenie, czy wyznaczony numer przerwy jest poprawny
     return break_number if break_number > max_break_number else max_break_number + 1
 
 def read_rfid_from_serial():
@@ -277,74 +279,82 @@ def add_user():
 def view_logs():
     close_open_breaks()
 
+    # Otwórz połączenie z bazą
     conn = connect_to_db()
     cursor = conn.cursor()
 
     date_filter = datetime.now().date()
     user_filter = None
 
-    if request.method == 'POST':
-        selected_date = request.form.get('selected_date')
-        selected_user = request.form.get('selected_user')
+    try:
+        if request.method == 'POST':
+            selected_date = request.form.get('selected_date')
+            selected_user = request.form.get('username')  # Pole z formularza
 
-        if selected_date:
-            date_filter = datetime.strptime(selected_date, '%Y-%m-%d').date()
-        if selected_user:
-            user_filter = int(selected_user)
+            if selected_date:
+                date_filter = datetime.strptime(selected_date, '%Y-%m-%d').date()
+            if selected_user:  # Szukaj UserID na podstawie nazwy użytkownika
+                cursor.execute("SELECT UserID FROM Users WHERE Username = ?", (selected_user,))
+                user = cursor.fetchone()
+                if user:
+                    user_filter = user[0]  # Pobierz UserID
+                else:
+                    flash(f"Użytkownik '{selected_user}' nie został znaleziony.", "warning")
 
-    query = """
-        SELECT u.Username, 
-               MAX(CASE WHEN l.BreakNumber = 1 THEN l.Timestamp END) AS Break1_Start,
-               MAX(CASE WHEN l.BreakNumber = 2 THEN l.Timestamp END) AS Break1_End,
-               MAX(CASE WHEN l.BreakNumber = 3 THEN l.Timestamp END) AS Break2_Start,
-               MAX(CASE WHEN l.BreakNumber = 4 THEN l.Timestamp END) AS Break2_End,
-               MAX(CASE WHEN l.BreakNumber = 5 THEN l.Timestamp END) AS Break3_Start,
-               MAX(CASE WHEN l.BreakNumber = 6 THEN l.Timestamp END) AS Break3_End
-        FROM Logs l
-        JOIN Users u ON l.UserID = u.UserID
-        WHERE DATE(l.Timestamp) = ?
-    """
+        query = """
+            SELECT u.Username, 
+                   MAX(CASE WHEN l.BreakNumber = 1 THEN l.Timestamp END) AS Break1_Start,
+                   MAX(CASE WHEN l.BreakNumber = 2 THEN l.Timestamp END) AS Break1_End,
+                   MAX(CASE WHEN l.BreakNumber = 3 THEN l.Timestamp END) AS Break2_Start,
+                   MAX(CASE WHEN l.BreakNumber = 4 THEN l.Timestamp END) AS Break2_End,
+                   MAX(CASE WHEN l.BreakNumber = 5 THEN l.Timestamp END) AS Break3_Start,
+                   MAX(CASE WHEN l.BreakNumber = 6 THEN l.Timestamp END) AS Break3_End
+            FROM Logs l
+            JOIN Users u ON l.UserID = u.UserID
+            WHERE DATE(l.Timestamp) = ?
+        """
 
-    params = [date_filter]
+        params = [date_filter]
 
-    if user_filter:
-        query += " AND l.UserID = ?"
-        params.append(user_filter)
+        if user_filter:
+            query += " AND l.UserID = ?"
+            params.append(user_filter)
 
-    query += " GROUP BY u.Username ORDER BY COALESCE(Break1_Start, Break2_Start, Break3_Start) ASC"
+        query += " GROUP BY u.Username ORDER BY COALESCE(Break1_Start, Break2_Start, Break3_Start) ASC"
 
-    cursor.execute(query, params)
-    logs = cursor.fetchall()
-    conn.close()
+        cursor.execute(query, params)
+        logs = cursor.fetchall()
 
-    # Convert timestamps and calculate break durations in hh:mm:ss format
-    for i in range(len(logs)):
-        logs[i] = list(logs[i])
-        for j in range(1, 7):  # Timestamps: indexes 1-6
-            if logs[i][j] is not None:
-                logs[i][j] = datetime.fromisoformat(logs[i][j])
+        # Konwertuj znaczniki czasu i oblicz czas trwania przerw
+        for i in range(len(logs)):
+            logs[i] = list(logs[i])
+            for j in range(1, 7):  # Timestamps: indexes 1-6
+                if logs[i][j] is not None:
+                    logs[i][j] = datetime.fromisoformat(logs[i][j])
 
-        # Calculate durations in hh:mm:ss format
-        for j in range(1, 4):  # For Break1, Break2, and Break3
-            start_idx = 2 * j - 1  # Start timestamp index
-            end_idx = 2 * j  # End timestamp index
+            # Calculate durations in hh:mm:ss format
+            for j in range(1, 4):  # For Break1, Break2, and Break3
+                start_idx = 2 * j - 1  # Start timestamp index
+                end_idx = 2 * j  # End timestamp index
 
-            if logs[i][start_idx] and logs[i][end_idx]:
-                duration_seconds = (logs[i][end_idx] - logs[i][start_idx]).total_seconds()
-                hours = int(duration_seconds // 3600)
-                minutes = int((duration_seconds % 3600) // 60)
-                seconds = int(duration_seconds % 60)
-                logs[i].append(f"{hours:02}:{minutes:02}:{seconds:02}")
-            else:
-                logs[i].append('Brak')
+                if logs[i][start_idx] and logs[i][end_idx]:
+                    duration_seconds = (logs[i][end_idx] - logs[i][start_idx]).total_seconds()
+                    hours = int(duration_seconds // 3600)
+                    minutes = int((duration_seconds % 3600) // 60)
+                    seconds = int(duration_seconds % 60)
+                    logs[i].append(f"{hours:02}:{minutes:02}:{seconds:02}")
+                else:
+                    logs[i].append('Brak')
 
-    conn = connect_to_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM Users")
-    users = cursor.fetchall()
-    conn.close()
+        cursor.execute("SELECT * FROM Users")
+        users = cursor.fetchall()
+
+    finally:
+        conn.close()  # Zamknij połączenie na samym końcu
 
     return render_template('view_logs.html', logs=logs, users=users, date_filter=date_filter)
+
+
 
 @app.route('/delete_log', methods=['POST'])
 @login_required
